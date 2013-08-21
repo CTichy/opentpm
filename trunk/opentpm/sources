@@ -1,0 +1,9 @@
+TARGETNAME = opentpm
+TARGETPATH = obj
+TARGETTYPE = DRIVER
+INCLUDES = %BUILD%\inc
+LIBS = %BUILD%\lib
+SOURCES = driver.c \
+	  util.c \
+	  tis.c \
+
