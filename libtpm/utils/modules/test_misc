@@ -1,0 +1,1280 @@
+#################################################################################
+#										#
+# Author: Stefan Berger, stefanb@us.ibm.com					#
+# $Id: test_misc 4073 2010-04-30 14:44:14Z kgoldman $				#
+# (c) Copyright IBM Corporation 2006, 2010.					#
+# 										#
+# All rights reserved.								#
+# 										#
+# Redistribution and use in source and binary forms, with or without		#
+# modification, are permitted provided that the following conditions are	#
+# met:										#
+# 										#
+# Redistributions of source code must retain the above copyright notice,	#
+# this list of conditions and the following disclaimer.				#
+# 										#
+# Redistributions in binary form must reproduce the above copyright		#
+# notice, this list of conditions and the following disclaimer in the		#
+# documentation and/or other materials provided with the distribution.		#
+# 										#
+# Neither the names of the IBM Corporation nor the names of its			#
+# contributors may be used to endorse or promote products derived from		#
+# this software without specific prior written permission.			#
+# 										#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS		#
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT		#
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR		#
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT		#
+# HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,	#
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT		#
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,		#
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY		#
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT		#
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE		#
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.		#
+#										#
+#################################################################################
+
+doMiscTest()
+{
+	sync_auditing
+	sync_auditing
+
+	MESSAGE=msg
+	echo ""
+	echo "Creating signing key using SRK as parent."
+	createkey -kt s \
+	          -pwdp $SRK_PASSWORD \
+	          -pwdk $SIGNINGKEY_PASSWORD \
+	          -pwdm $MIGRATION_PASSWORD \
+	          -sz $KEYSIZE \
+	          -ok $SIGNINGKEY_FILENAME \
+	          -hp $SRK_HANDLE > run.out
+
+	if [ $? -ne 0 ]; then
+		echo " ERROR: Could not create signing key."
+		dumpOutput
+	else
+		echo " INFO: Successfully created signing key."
+
+		echo "Loading signing key into TPM."
+		loadkey $LOADKEY_VERSION -hp $SRK_HANDLE \
+		          -ik $SIGNINGKEY_FILENAME.key \
+		          -pwdp $SRK_PASSWORD > loadkey.out
+
+		if [ $? -ne 0 ]; then
+			echo " ERROR: Could not load signing key into TPM."
+			dumpOutput
+		else
+			SIGNINGKEY_HANDLE_1=0x`cat loadkey.out | grep "New Key Handle" | gawk '{print $5}'`
+			echo " INFO: Loaded signing key into TPM. Handle is $SIGNINGKEY_HANDLE_1"
+		fi
+
+
+		echo "Loading signing key into TPM (again)."
+		loadkey $LOADKEY_VERSION -hp $SRK_HANDLE \
+		          -ik $SIGNINGKEY_FILENAME.key \
+		          -pwdp $SRK_PASSWORD > loadkey.out
+
+		if [ $? -ne 0 ]; then
+			echo " ERROR: Could not load signing key into TPM."
+			dumpOutput
+		else
+			SIGNINGKEY_HANDLE_2=0x`cat loadkey.out | grep "New Key Handle" | gawk '{print $5}'`
+			echo " INFO: Loaded signing key into TPM. Handle is $SIGNINGKEY_HANDLE_2"
+		fi
+
+
+		echo "Setting owner evict flags on the seconds signing key."
+		keycontrol -pwdk $SIGNINGKEY_PASSWORD \
+		        -hk $SIGNINGKEY_HANDLE_2 \
+		        -bn 1 \
+			-bv 1 \
+			-pwdo $OWNER_PASSWORD >run.out
+		ERR=$?
+		if [ $ERR -ne 0 ]; then
+			echo " ERROR: Could not set owner evict flag on signing key"
+			dumpOutput
+			return 1
+		else
+			echo " INFO: Successfully set owner evict flag on signing key"
+		fi
+
+	fi
+
+
+	echo "Attempting to evict 2nd signing key ($SIGNINGKEY_HANDLE_2)."
+	evictkey -hk $SIGNINGKEY_HANDLE_2 >run.out
+	ERR=$?
+	if [ $ERR -eq 0 ]; then
+		echo " ERROR: Could evict the 2nd signing key."
+	else
+		echo " INFO: Command completed successfully."
+	fi
+
+
+	echo "Signing contents of a file 'input' using first signing key $SIGNINGKEY_HANDLE_1."
+	./signfile -pwdk $SIGNINGKEY_PASSWORD \
+	           -hk $SIGNINGKEY_HANDLE_1 \
+	           -if input \
+	           -os output > run.out
+
+	if [ $? -ne 0 ]; then
+		echo " ERROR: Signing contents of file 'input' failed."
+		echo " WARN:  Not verifying signature."
+		dumpOutput
+	else
+		echo " INFO: Signed contents of file 'input'."
+		echo "Verifying signature of file."
+		./verifyfile -is output -if input -ik $SIGNINGKEY_FILENAME.pem
+		if [ $? -ne 0 ]; then
+			echo " ERROR: Verifying the signature failed."
+			dumpOutput
+		else
+			echo " INFO: Signature is correct."
+		fi
+	fi
+
+
+	echo "Signing contents of a file 'input' using 2nd signing key $SIGNINGKEY_HANDLE_2."
+	./signfile -pwdk $SIGNINGKEY_PASSWORD \
+	           -hk $SIGNINGKEY_HANDLE_2 \
+	           -if input \
+	           -os output > run.out
+
+	if [ $? -ne 0 ]; then
+		echo " ERROR: Signing contents of file 'input' failed."
+		echo " WARN:  Not verifying signature."
+		dumpOutput
+	else
+		echo " INFO: Signed contents of file 'input'."
+		echo "Verifying signature of file."
+		./verifyfile -is output -if input -ik $SIGNINGKEY_FILENAME.pem
+		if [ $? -ne 0 ]; then
+			echo " ERROR: Verifying the signature failed."
+			dumpOutput
+		else
+			echo " INFO: Signature is correct."
+		fi
+	fi
+
+	check_audit_digest
+
+
+	if [ "$USE_TPMINIT" == "0" ]; then
+		echo ""
+		echo "Please stop the TPM and restart it. Press enter to continue."
+		read enter
+		echo ""
+	else
+		tpminit > run.out
+	fi
+	tpmbios > run.out
+	ERR=$?
+	if [ $ERR -ne 0 ]; then
+		echo " ERROR: Could not initialize communication with the TPM."
+		echo "    *** Please re-cycle the TPM!! ***"
+		dumpOutput
+	fi
+
+	sync_auditing
+
+	echo "Signing contents of a file 'input' using 1st signing key $SIGNINGKEY_HANDLE_1."
+	./signfile -pwdk $SIGNINGKEY_PASSWORD \
+	           -hk $SIGNINGKEY_HANDLE_1 \
+	           -if input \
+	           -os output > run.out
+
+	if [ $? -ne 0 ]; then
+		echo " INFO: Command completed successfully."
+	else
+		echo " ERROR: Could sign contents of file 'input'."
+		echo "Verifying signature of file."
+		./verifyfile -is output -if input -ik $SIGNINGKEY_FILENAME.pem
+		if [ $? -ne 0 ]; then
+			echo " ERROR: Verifying the signature failed."
+			dumpOutput
+		else
+			echo " INFO: Signature is correct."
+		fi
+	fi
+
+
+	echo "Signing contents of a file 'input' using 2nd signing key $SIGNINGKEY_HANDLE_2."
+	./signfile -pwdk $SIGNINGKEY_PASSWORD \
+	           -hk $SIGNINGKEY_HANDLE_2 \
+	           -if input \
+	           -os output > run.out
+
+	if [ $? -ne 0 ]; then
+		echo " ERROR: Signing contents of file 'input' failed."
+		echo " WARN:  Not verifying signature."
+		dumpOutput
+	else
+		echo " INFO: Signed contents of file 'input'."
+		echo "Verifying signature of file."
+		./verifyfile -is output -if input -ik $SIGNINGKEY_FILENAME.pem
+		if [ $? -ne 0 ]; then
+			echo " ERROR: Verifying the signature failed."
+			dumpOutput
+		else
+			echo " INFO: Signature is correct."
+		fi
+	fi
+
+	echo "Removing owner evict flags from the second signing key."
+	keycontrol -pwdk $SIGNINGKEY_PASSWORD \
+	        -hk $SIGNINGKEY_HANDLE_2 \
+	        -bn 1 \
+		-bv $FALSE \
+		-pwdo $OWNER_PASSWORD >run.out
+	ERR=$?
+	if [ $ERR -ne 0 ]; then
+		echo " ERROR: Could not remove owner evict flag on signing key"
+		dumpOutput
+		return 1
+	else
+		echo " INFO: Successfully removed owner evict flag on signing key"
+	fi
+
+
+	echo "Signing contents of a file 'input' using 2nd signing key $SIGNINGKEY_HANDLE_2."
+	./signfile -pwdk $SIGNINGKEY_PASSWORD \
+	           -hk $SIGNINGKEY_HANDLE_2 \
+	           -if input \
+	           -os output > run.out
+
+	if [ $? -ne 0 ]; then
+		echo " ERROR: Signing contents of file 'input' failed."
+		echo " WARN:  Not verifying signature."
+		dumpOutput
+	else
+		echo " INFO: Signed contents of file 'input'."
+		echo "Verifying signature of file."
+		./verifyfile -is output -if input -ik $SIGNINGKEY_FILENAME.pem
+		if [ $? -ne 0 ]; then
+			echo " ERROR: Verifying the signature failed."
+			dumpOutput
+		else
+			echo " INFO: Signature is correct."
+		fi
+	fi
+
+	echo "Evicting 2nd signing key $SIGNINGKEY_HANDLE_2."
+	evictkey -hk $SIGNINGKEY_HANDLE_2 >run.out
+	ERR=$?
+	if [ $ERR -eq 0 ]; then
+		echo " INFO: Evicted the 2nd signing key."
+	else
+		echo " ERROR: Could not evict 2nd signing key."
+	fi
+
+	check_audit_digest
+
+	if [ "$USE_TPMINIT" == "0" ]; then
+		echo ""
+		echo "Please stop the TPM and restart it. Press enter to continue."
+		read enter
+		echo ""
+	else
+		tpminit > run.out
+	fi
+	tpmbios > run.out
+	ERR=$?
+	if [ $ERR -ne 0 ]; then
+		echo " ERROR: Could not initialize communication with the TPM."
+		echo "    *** Please re-cycle the TPM!! ***"
+		dumpOutput
+	fi
+
+	sync_auditing
+
+	echo "Signing contents of a file 'input' using 1st signing key $SIGNINGKEY_HANDLE_1."
+	./signfile -pwdk $SIGNINGKEY_PASSWORD \
+	           -hk $SIGNINGKEY_HANDLE_1 \
+	           -if input \
+	           -os output > run.out
+
+	if [ $? -ne 0 ]; then
+		echo " INFO: Command completed successfully."
+	else
+		echo " ERROR: Could sign contents of file 'input'."
+		echo "Verifying signature of file."
+		./verifyfile -is output -if input -ik $SIGNINGKEY_FILENAME.pem
+		if [ $? -ne 0 ]; then
+			echo " ERROR: Verifying the signature failed."
+			dumpOutput
+		else
+			echo " INFO: Signature is correct."
+		fi
+	fi
+
+	echo "Signing contents of a file 'input' using 2nd signing key $SIGNINGKEY_HANDLE_2."
+	./signfile -pwdk $SIGNINGKEY_PASSWORD \
+	           -hk $SIGNINGKEY_HANDLE_2 \
+	           -if input \
+	           -os output > run.out
+
+	if [ $? -ne 0 ]; then
+		echo " INFO: Command completed successfully."
+	else
+		echo " ERROR: Could sign contents of file 'input'."
+		echo "Verifying signature of file."
+		./verifyfile -is output -if input -ik $SIGNINGKEY_FILENAME.pem
+		if [ $? -ne 0 ]; then
+			echo " ERROR: Verifying the signature failed."
+			dumpOutput
+		else
+			echo " INFO: Signature is correct."
+		fi
+	fi
+
+	echo "Checking whether 1st signing key is in the TPM."
+	checkKeyInTPM $SIGNINGKEY_HANDLE_1
+	RES=$?
+	if [ $RES -eq 0 ]; then
+		echo " INFO: Key is gone."
+	else
+		echo " ERROR: Key is still there."
+	fi
+
+	echo "Checking whether 2nd signing key is in the TPM."
+	checkKeyInTPM $SIGNINGKEY_HANDLE_2
+	RES=$?
+	if [ $RES -eq 0 ]; then
+		echo " INFO: Key is gone."
+	else
+		echo " ERROR: Key is still there."
+	fi
+
+
+	echo "Loading signing key into TPM."
+	loadkey $LOADKEY_VERSION -hp $SRK_HANDLE \
+	          -ik $SIGNINGKEY_FILENAME.key \
+	          -pwdp $SRK_PASSWORD > loadkey.out
+
+	if [ $? -ne 0 ]; then
+		echo " ERROR: Could not load signing key into TPM."
+		dumpOutput
+	else
+		SIGNINGKEY_HANDLE_1=0x`cat loadkey.out | grep "New Key Handle" | gawk '{print $5}'`
+		echo " INFO: Loaded signing key into TPM. Handle is $SIGNINGKEY_HANDLE_1"
+	fi
+
+	echo "Loading signing key into TPM (again)."
+	loadkey $LOADKEY_VERSION -hp $SRK_HANDLE \
+	          -ik $SIGNINGKEY_FILENAME.key \
+	          -pwdp $SRK_PASSWORD > loadkey.out
+
+	if [ $? -ne 0 ]; then
+		echo " ERROR: Could not load signing key into TPM."
+		dumpOutput
+	else
+		SIGNINGKEY_HANDLE_2=0x`cat loadkey.out | grep "New Key Handle" | gawk '{print $5}'`
+		echo " INFO: Loaded signing key into TPM. Handle is $SIGNINGKEY_HANDLE_2"
+	fi
+
+
+	echo "Setting owner evict flags on the second signing key."
+	keycontrol -pwdk $SIGNINGKEY_PASSWORD \
+	        -hk $SIGNINGKEY_HANDLE_2 \
+	        -bn 1 \
+		-bv 1 \
+		-pwdo $OWNER_PASSWORD >run.out
+	ERR=$?
+	if [ $ERR -ne 0 ]; then
+		echo " ERROR: Could not set owner evict flag on signing key"
+		dumpOutput
+		return 1
+	else
+		echo " INFO: Successfully set owner evict flag on signing key"
+	fi
+
+	echo "Extending PCR 10."
+	extend -ix 10 -ic $MESSAGE > run.out
+	ERR=$?
+	if [ $ERR -ne 0 ]; then
+		echo " ERROR: Could not extend PCR value."
+		dumpOutput
+	else
+		echo " INFO: Successfully extended PCR."
+		PCRVAL_10=`grep -E "New value" run.out | gawk '{ print $5 }'`
+		echo "       New value is: $PCRVAL_10"
+	fi
+
+
+	echo "Creating an OSAP session."
+	session osap owner $OWNER_PASSWORD > run.out
+	ERR=$?
+	if [ $ERR -eq 0 ]; then
+		OSAP_SESS=`cat run.out | grep Successfully | gawk '{ print $4 }'`
+		echo " INFO: Successfully established OSAP session $OSAP_SESS."
+	else
+		echo " ERROR: Could not create the OSAP session."
+	fi
+
+
+	check_audit_digest
+
+
+	REMEMBER_TPM_TRANSPORT=$TPM_TRANSPORT
+	if [ "$TPM_TRANSPORT" != "0" ]; then
+		echo ""
+		echo "Turning transport mode off."
+		echo ""
+		TPM_TRANSPORT="0"
+	fi
+
+	echo "Saving TPM state."
+	savestate
+	ERR=$?
+	if [ $ERR -eq 0 ]; then
+		echo " INFO: Successfully saved the state."
+	else
+		echo " ERROR: COuld not save the state."
+	fi
+
+	if [ "$USE_TPMINIT" == "0" ]; then
+		echo ""
+		echo "Please stop the TPM and restart it. Press enter to continue."
+		read enter
+		echo ""
+	else
+		tpminit > run.out
+	fi
+	tpmbios -s > run.out
+	ERR=$?
+	if [ $ERR -ne 0 ]; then
+		echo " ERROR: Could not initialize communication with the TPM."
+		echo "    *** Please re-cycle the TPM!! ***"
+		dumpOutput
+	fi
+	sync_auditing
+
+	echo "Checking whether 1st signing key is in the TPM."
+	checkKeyInTPM $SIGNINGKEY_HANDLE_1
+	RES=$?
+	if [ $RES -eq 1 ]; then
+		echo " INFO: Key is there."
+	else
+		echo " ERROR: Key is gone."
+	fi
+
+	echo "Checking whether 2nd signing key is in the TPM."
+	checkKeyInTPM $SIGNINGKEY_HANDLE_2
+	RES=$?
+	if [ $RES -eq 1 ]; then
+		echo " INFO: Key is there."
+	else
+		echo " ERROR: Key is gone."
+	fi
+
+
+	echo "Signing contents of a file 'input' using first signing key $SIGNINGKEY_HANDLE_1."
+	./signfile -pwdk $SIGNINGKEY_PASSWORD \
+	           -hk $SIGNINGKEY_HANDLE_1 \
+	           -if input \
+	           -os output > run.out
+
+	if [ $? -ne 0 ]; then
+		echo " ERROR: Signing contents of file 'input' failed."
+		echo " WARN:  Not verifying signature."
+		dumpOutput
+	else
+		echo " INFO: Signed contents of file 'input'."
+		echo "Verifying signature of file."
+		./verifyfile -is output -if input -ik $SIGNINGKEY_FILENAME.pem
+		if [ $? -ne 0 ]; then
+			echo " ERROR: Verifying the signature failed."
+			dumpOutput
+		else
+			echo " INFO: Signature is correct."
+		fi
+	fi
+
+
+	echo "Signing contents of a file 'input' using 2nd signing key $SIGNINGKEY_HANDLE_2."
+	./signfile -pwdk $SIGNINGKEY_PASSWORD \
+	           -hk $SIGNINGKEY_HANDLE_2 \
+	           -if input \
+	           -os output > run.out
+
+	if [ $? -ne 0 ]; then
+		echo " ERROR: Signing contents of file 'input' failed."
+		echo " WARN:  Not verifying signature."
+		dumpOutput
+	else
+		echo " INFO: Signed contents of file 'input'."
+		echo "Verifying signature of file."
+		./verifyfile -is output -if input -ik $SIGNINGKEY_FILENAME.pem
+		if [ $? -ne 0 ]; then
+			echo " ERROR: Verifying the signature failed."
+			dumpOutput
+		else
+			echo " INFO: Signature is correct."
+		fi
+	fi
+
+
+	echo "Reading PCR 10."
+	pcrread -ix 10 > run.out
+	ERR=$?	
+	if [ $ERR -eq 0 ]; then	
+		PCR=`cat run.out | grep "Current" | gawk '{ print $6 }'`
+		if [ "$PCR" == "$PCRVAL_10" ]; then
+			echo " INFO: PCR value is correct."
+		else
+			echo " ERROR: Wrong PCR Value."
+			echo "        Expected: $PCRVAL_10"
+			echo "        Actual  : $PCR"
+		fi
+	else
+		echo " ERROR: Could not read PCR 10"		
+	fi
+
+	echo "Checking whether OSAP session $OSAP_SESS is still in the TPM."
+	checkAuthInTPM $OSAP_SESS
+	RES=$?
+	if [ $RES -eq 1 ]; then
+		echo " INFO: OSAP session in TPM."
+	else
+		echo " ERROR: OSAP session not in TPM anymore."
+	fi
+
+	echo "Clearing OSAP session."
+	session osap close $OSAP_SESS
+	ERR=$?
+	if [ $ERR -eq 0 ]; then
+		echo " INFO: Successfully closed OSAP session."
+	else
+		echo " ERROR: Could not close OSAP session."
+	fi
+
+	echo "Extending PCR 11."
+	extend -ix 11 -ic $MESSAGE > run.out
+	ERR=$?
+	if [ $ERR -ne 0 ]; then
+		echo " ERROR: Could not extend PCR value."
+		dumpOutput
+	else
+		echo " INFO: Successfully extended PCR."
+		PCRVAL_11=`grep -E "New value" run.out | gawk '{ print $5 }'`
+		echo "       New value is: $PCRVAL_11"
+	fi
+
+	echo "Extending PCR 10."
+	extend -ix 10 -ic $MESSAGE > run.out
+	ERR=$?
+	if [ $ERR -ne 0 ]; then
+		echo " ERROR: Could not extend PCR value."
+		dumpOutput
+	else
+		echo " INFO: Successfully extended PCR."
+		PCRVAL_10=`grep -E "New value" run.out | gawk '{ print $5 }'`
+		echo "       New value is: $PCRVAL_10"
+	fi
+
+	check_audit_digest
+
+	echo "Saving TPM state."
+	savestate
+	ERR=$?
+	if [ $ERR -eq 0 ]; then
+		echo " INFO: Successfully saved the state."
+	else
+		echo " ERROR: COuld not save the state."
+	fi
+
+	if [ "$USE_TPMINIT" == "0" ]; then
+		echo ""
+		echo "Please stop the TPM and restart it. Press enter to continue."
+		read enter
+		echo ""
+	else
+		tpminit > run.out
+	fi
+	tpmbios -s > run.out
+	ERR=$?
+	if [ $ERR -ne 0 ]; then
+		echo " ERROR: Could not initialize communication with the TPM."
+		echo "    *** Please re-cycle the TPM!! ***"
+		dumpOutput
+	fi
+	sync_auditing
+
+
+	echo "Reading PCR 10."
+	pcrread -ix 10 > run.out
+	ERR=$?	
+	if [ $ERR -eq 0 ]; then	
+		PCR=`cat run.out | grep "Current" | gawk '{ print $6 }'`
+		if [ "$PCR" == "$PCRVAL_10" ]; then
+			echo " INFO: PCR value is correct."
+		else
+			echo " ERROR: Wrong PCR Value."
+			echo "        Expected: $PCRVAL_10"
+			echo "        Actual  : $PCR"
+		fi
+	else
+		echo " ERROR: Could not read PCR 10"		
+	fi
+
+	echo "Reading PCR 11."
+	pcrread -ix 11 > run.out
+	ERR=$?	
+	if [ $ERR -eq 0 ]; then	
+		PCR=`cat run.out | grep "Current" | gawk '{ print $6 }'`
+		if [ "$PCR" == "$PCRVAL_11" ]; then
+			echo " INFO: PCR value is correct."
+		else
+			echo " ERROR: Wrong PCR Value."
+			echo "        Expected: $PCRVAL_11"
+			echo "        Actual  : $PCR"
+		fi
+	else
+		echo " ERROR: Could not read PCR 11"	
+	fi
+
+	PCRREGISTER=10
+	MSG=Hello
+	echo "Creating a binding key that is bound to a future state of PCR $PCRREGISTER"
+	echo " Using a 1.2 key structure."
+	calcfuturepcr -ix $PCRREGISTER -ic $MSG > run.out
+	NEWPCRVALUE=`grep -E "Future" run.out | gawk '{print $6}'`
+
+	TESTBINDINGKEY_FILENAME=testbindkey
+
+	createkey -kt b \
+	          -pwdp $SRK_PASSWORD \
+	          -pwdk $BINDINGKEY_PASSWORD \
+	          -ix 10 $NEWPCRVALUE \
+	          -ok $TESTBINDINGKEY_FILENAME \
+	          -hp $SRK_HANDLE > run.out
+	
+	if [ $? -ne 0 ]; then
+		echo " ERROR: Could not create binding key."
+		dumpOutput
+	else
+		echo " INFO: Successfully created binding key."
+
+		echo "Loading binding key into TPM."
+		loadkey $LOADKEY_VERSION -hp $SRK_HANDLE \
+		        -ik $TESTBINDINGKEY_FILENAME.key \
+		        -pwdp $SRK_PASSWORD > loadkey.out
+
+		if [ $? -ne 0 ]; then
+			echo " ERROR: Could not load binding key into TPM."
+			dumpOutput
+		else
+			TESTBINDINGKEY_HANDLE=0x`cat loadkey.out | grep "New Key Handle" | gawk '{print $5}'`
+			echo " INFO: Loaded binding key into TPM. Handle is $TESTBINDINGKEY_HANDLE"
+		fi
+	fi
+
+	echo "Binding data using newly created key."
+	bindfile -ik $TESTBINDINGKEY_FILENAME.pem -if input -of outputa > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+		echo " ERROR: Could not bind contents of file."
+		dumpOutput
+	else
+		echo " INFO: Successfully bound contents of file."
+	fi
+
+	echo "Attempting to unbind data."
+	unbindfile -pwdk $BINDINGKEY_PASSWORD \
+	           -hk $TESTBINDINGKEY_HANDLE \
+	           -if outputa \
+		   -of output > run.out
+	RES=$?
+	if [ $RES -eq 0 ]; then
+		echo " ERROR: Could unbind data with PCR in wrong state."
+	elif [ $RES -ne $TPM_WRONGPCRVALUE ]; then
+		echo " ERROR: Unexpected return code."
+	else
+		echo " INFO: Command completed successfully."
+	fi
+
+	echo "Advancing the PCR $PCRREGISTER to state for unbinding"
+	extend -ix $PCRREGISTER -ic $MSG > run.out
+	RES=$?
+	if [ $RES -eq 0 ]; then
+		echo " INFO: Successfully extend PCR $PCRREGISTER"
+	else
+		echo " ERROR: Could not extend PCR $PCRREGISTER"
+		dumpOutput
+	fi
+
+	echo "Attempting to unbind data."
+	unbindfile -pwdk $BINDINGKEY_PASSWORD \
+	           -hk $TESTBINDINGKEY_HANDLE \
+	           -if outputa \
+		   -of output > run.out
+	RES=$?
+	if [ $RES -eq 0 ]; then
+		echo " INFO: Successfully unbound data."
+	else
+		echo " ERROR: Could not unbind data."
+	fi
+
+	echo "Advancing the PCR $PCRREGISTER to state for unbinding"
+	extend -ix $PCRREGISTER -ic $MSG > run.out
+	RES=$?
+	if [ $RES -eq 0 ]; then
+		echo " INFO: Successfully extend PCR $PCRREGISTER"
+	else
+		echo " ERROR: Could not extend PCR $PCRREGISTER"
+		dumpOutput
+	fi
+	
+	echo "Attempting to unbind data."
+	unbindfile -pwdk $BINDINGKEY_PASSWORD \
+	           -hk $TESTBINDINGKEY_HANDLE \
+	           -if outputa \
+		   -of output > run.out
+	RES=$?
+	if [ $RES -eq 0 ]; then
+		echo " ERROR: Could unbind data with PCR in wrong state."
+	elif [ $RES -ne $TPM_WRONGPCRVALUE ]; then
+		echo " ERROR: Unexpected return code."
+	else
+		echo " INFO: Command completed successfully."
+	fi
+
+
+	echo "Creating a binding key that is bound to a future state of PCR $PCRREGISTER"
+	echo " Using an old key structure."
+	calcfuturepcr -ix $PCRREGISTER -ic $MSG > run.out
+	NEWPCRVALUE=`grep -E "Future" run.out | gawk '{print $6}'`
+
+	TESTBINDINGKEY_FILENAME=testbindkey
+
+	createkey -v1 \
+	          -kt b \
+	          -pwdp $SRK_PASSWORD \
+	          -pwdk $BINDINGKEY_PASSWORD \
+	          -ix 10 $NEWPCRVALUE \
+	          -ok $TESTBINDINGKEY_FILENAME \
+	          -hp $SRK_HANDLE > run.out
+	
+	if [ $? -ne 0 ]; then
+		echo " ERROR: Could not create binding key."
+		dumpOutput
+	else
+		echo " INFO: Successfully created binding key."
+
+		echo "Loading binding key into TPM."
+		loadkey $LOADKEY_VERSION -hp $SRK_HANDLE \
+		        -ik $TESTBINDINGKEY_FILENAME.key \
+		        -pwdp $SRK_PASSWORD > loadkey.out
+
+		if [ $? -ne 0 ]; then
+			echo " ERROR: Could not load binding key into TPM."
+			dumpOutput
+		else
+			TESTBINDINGKEY_HANDLE=0x`cat loadkey.out | grep "New Key Handle" | gawk '{print $5}'`
+			echo " INFO: Loaded binding key into TPM. Handle is $TESTBINDINGKEY_HANDLE"
+		fi
+	fi
+
+	echo "Binding data using newly created key."
+	bindfile -ik $TESTBINDINGKEY_FILENAME.pem -if input -of outputa > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+		echo " ERROR: Could not bind contents of file."
+		dumpOutput
+	else
+		echo " INFO: Successfully bound contents of file."
+	fi
+
+	echo "Attempting to unbind data."
+	unbindfile -pwdk $BINDINGKEY_PASSWORD \
+	           -hk $TESTBINDINGKEY_HANDLE \
+	           -if outputa \
+		   -of output > run.out
+	RES=$?
+	if [ $RES -eq 0 ]; then
+		echo " ERROR: Could unbind data with PCR in wrong state."
+	elif [ $RES -ne $TPM_WRONGPCRVALUE ]; then
+		echo " ERROR: Unexpected return code."
+	else
+		echo " INFO: Command completed successfully."
+	fi
+
+	echo "Advancing the PCR $PCRREGISTER to state for unbinding"
+	extend -ix $PCRREGISTER -ic $MSG > run.out
+	RES=$?
+	if [ $RES -eq 0 ]; then
+		echo " INFO: Successfully extend PCR $PCRREGISTER"
+	else
+		echo " ERROR: Could not extend PCR $PCRREGISTER"
+		dumpOutput
+	fi
+
+	echo "Attempting to unbind data."
+	unbindfile -pwdk $BINDINGKEY_PASSWORD \
+	           -hk $TESTBINDINGKEY_HANDLE \
+	           -if outputa \
+		   -of output > run.out
+	RES=$?
+	if [ $RES -eq 0 ]; then
+		echo " INFO: Successfully unbound data."
+	else
+		echo " ERROR: Could not unbind data."
+	fi
+
+	echo "Advancing the PCR $PCRREGISTER to state for unbinding"
+	extend -ix $PCRREGISTER -ic $MSG > run.out
+	RES=$?
+	if [ $RES -eq 0 ]; then
+		echo " INFO: Successfully extend PCR $PCRREGISTER"
+	else
+		echo " ERROR: Could not extend PCR $PCRREGISTER"
+		dumpOutput
+	fi
+	
+	echo "Attempting to unbind data."
+	unbindfile -pwdk $BINDINGKEY_PASSWORD \
+	           -hk $TESTBINDINGKEY_HANDLE \
+	           -if outputa \
+		   -of output > run.out
+	RES=$?
+	if [ $RES -eq 0 ]; then
+		echo " ERROR: Could unbind data with PCR in wrong state."
+	elif [ $RES -ne $TPM_WRONGPCRVALUE ]; then
+		echo " ERROR: Unexpected return code."
+	else
+		echo " INFO: Command completed successfully."
+	fi
+
+	check_audit_digest
+
+	echo "Attempting to create a PCR-wrapped key with wrong type of PCR_INFO struct."
+	echo " Using old key structure on input and TPM_PCR_INFO_LONG."
+	#ATT: Input is malformed and therefore we need to sync auditing
+	#     afterwards
+	createkey -v1 \
+	          -kt b \
+	          -pwdp $SRK_PASSWORD \
+	          -pwdk $BINDINGKEY_PASSWORD \
+	          -ix 10 $NEWPCRVALUE \
+		  -vlong \
+	          -ok $TESTBINDINGKEY_FILENAME \
+	          -hp $SRK_HANDLE > run.out
+	RES=$?
+	if [ $RES -eq $TPM_INVALID_STRUCTURE -o \
+             $RES -eq $TPM_INVALID_PCR_INFO ]; then
+		echo " INFO: Command completed successfully."
+	elif [ $RES -ne 0 ]; then
+		echo " WARN: Unexpected result code: $RES"
+	else
+		echo " ERROR: Could create key with wrong type of TPM_PCR_INFO structure"
+	fi
+
+	#Need to sync after intentionately malformed command
+	#sync_auditing  -- do after next command
+
+	echo "Attempting to create a PCR-wrapped key with wrong type of PCR_INFO struct."
+	echo " Using TPM_KEY12 structure and TPM_PCR_INFO on input."
+	#ATT: Input is malformed and therefore we need to sync auditing
+	#     afterwards
+	createkey -kt b \
+	          -pwdp $SRK_PASSWORD \
+	          -pwdk $BINDINGKEY_PASSWORD \
+	          -ix 10 $NEWPCRVALUE \
+		  -vinfo \
+	          -ok $TESTBINDINGKEY_FILENAME \
+	          -hp $SRK_HANDLE > run.out
+	RES=$?
+	if [ $RES -eq $TPM_INVALID_STRUCTURE -o \
+             $RES -eq $TPM_INVALID_PCR_INFO ]; then
+		echo " INFO: Command completed successfully."
+	elif [ $RES -ne 0 ]; then
+		echo " WARN: Unexpected result code: $RES"
+	else
+		echo " ERROR: Could create key with wrong type of TPM_PCR_INFO structure"
+	fi
+
+	#Need to sync after intentionately malformed commands
+	sync_auditing
+
+	echo "Attempting to create a non-wrapped key. Using old key structure on input."
+	createkey -v1 \
+	          -kt b \
+	          -pwdp $SRK_PASSWORD \
+	          -pwdk $BINDINGKEY_PASSWORD \
+	          -ok $TESTBINDINGKEY_FILENAME \
+	          -hp $SRK_HANDLE > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+		echo " ERROR: Error creating key."
+		dumpOutput
+	else
+		echo " INFO: Successfully created key."
+	fi
+
+	echo "Attempting to create a non-wrapped key. Using TPM_KEY12 structure on input."
+	createkey -kt b \
+	          -pwdp $SRK_PASSWORD \
+	          -pwdk $BINDINGKEY_PASSWORD \
+	          -ok $TESTBINDINGKEY_FILENAME \
+	          -hp $SRK_HANDLE > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+		echo " ERROR: Error creating key."
+		dumpOutput
+	else
+		echo " INFO: Successfully created key."
+	fi
+
+
+
+
+
+	TPM_TRANSPORT=$REMEMBER_TPM_TRANSPORT
+
+#	echo
+#	echo "Creating a key with 8kbit."
+#	time createkey -kt e \
+#	          -pwdp $SRK_PASSWORD \
+#	          -sz 8192 \
+#	          -ok testkey \
+#	          -hp $SRK_HANDLE > run.out
+#	echo " INFO: Time it took to create the key."
+#	cat run.out
+#	echo
+}
+
+
+doPhysPresenceTest ()
+{
+	echo ""
+	echo "Test CMD Physical Presence"
+	echo ""
+
+	echo "Set Physical Presence Present Action 3.g"
+	physicalpresence -s > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+	    echo " ERROR: Cannot set Physical Presence Present"
+	    dumpOutput
+	else
+	    echo " INFO: Can set Physical Presence Present"
+	fi
+
+	echo "TPM_PhysicalEnable should succeed with Physical Presence"
+	physicalenable > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+	    echo " ERROR: Cannot set Physical Enable with Physical Presence"
+	#    dumpOutput
+	else
+	    echo " INFO: Can set Physical Enable with Physical Presence"
+	fi
+
+	echo "Set Physical Presence not Present Action 3.h"
+	# set Physical Presence
+	physicalpresence -c > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+	    echo " ERROR: Cannot set Physical Presence not Present"
+	#    dumpOutput
+	else
+	    echo " INFO: Can set Physical Presence not Present"
+	fi
+
+	echo "TPM_PhysicalEnable should fail without Physical Presence"
+	physicalenable  > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+	    echo " INFO: Cannot set Physical Enable without Physical Presence"
+	else
+	    echo " ERROR: Can set Physical Enable without Physical Presence"
+	#    dumpOutput
+	fi
+
+	echo "No Physical Presence parameters should fail Action 4."
+	physicalpresence -x 0000 > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+	    echo " INFO: Cannot use no Physical Presence parameters"
+	else
+	    echo " ERROR: Can use no Physical Presence parameters"
+	#    dumpOutput
+	fi
+
+	echo ""
+	echo "Test Physical Presence Cmd Enable and Disable"
+	echo ""
+	
+	echo "Physical Presence Cmd Disable Action 2.h"
+	physicalpresence -x 0100 > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+	    echo " ERROR: Cannot set Physical Presence Cmd Disable "
+	#    dumpOutput
+	else
+	    echo " INFO: Can set Physical Presence Cmd Disable"
+	fi
+
+	echo "Physical Presence Lock should fail with Cmd disable Action 3.b"
+	physicalpresence -x 0004 > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+	    echo " INFO: Cannot set Physical Presence Lock"
+	else
+	    echo " ERROR: Can set Physical Presence Lock"
+	#    dumpOutput
+	fi
+
+	echo "Physical Presence Present should fail with Cmd disable Action 3.b"
+	physicalpresence -x 0008 > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+	    echo " INFO: Cannot set Physical Presence Present"
+	else
+	    echo " ERROR: Can set Physical Presence Present"
+	#    dumpOutput
+	fi
+
+	echo "Physical Presence not Present should fail with Cmd disable Action 3.b"
+	physicalpresence -x 0010 > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+	    echo " INFO: Cannot set Physical Presence not Present"
+	else
+	    echo " ERROR: Can set Physical Presence not Present"
+	#    dumpOutput
+	fi
+
+	echo "Physical Presence Cmd Enable and Disable should fail Action 2.d"
+	physicalpresence -x 0120 > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+	    echo " INFO: Cannot set Physical Presence Cmd Enable and Disable"
+	else
+	    echo " ERROR: Can set Physical Presence Cmd Enable and Disable"
+	#    dumpOutput
+	fi
+
+	echo "Physical Presence Cmd Enable Action 2.g"
+	physicalpresence -x 0020 > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+	    echo " ERROR: Cannot set Physical Presence Cmd Enable"
+	#    dumpOutput
+	else
+	    echo " INFO: Can set Physical Presence Cmd Enable"
+	fi
+
+	echo "Physical Presence Lock and Physical Presence Present should fail Action 3.c"
+	physicalpresence -x 000c > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+	    echo " INFO: Cannot set Physical Presence Lock and Physical Presence Present"
+	else
+	    echo " ERROR: Can set Physical Presence Lock and Physical Presence Present"
+	#    dumpOutput
+	fi
+
+	echo "Physical Presence Present and Physical Presence not Present should fail Action 3.d"
+	physicalpresence -x 0018 > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+	    echo " INFO: Cannot set Physical Presence Present and Physical Presence not Present"
+	else
+	    echo " ERROR: Can set Physical Presence Present and Physical Presence not Present"
+	#    dumpOutput
+	fi
+
+	echo "Physical Presence Present"
+	physicalpresence -x 0008 > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+	    echo " ERROR: Cannot set Physical Presence Present"
+	#    dumpOutput
+	else
+	    echo " INFO: Can set Physical Presence Present"
+	fi
+
+	echo "Physical Presence Lock should succeed with Cmd Enable Action 2.f"
+	physicalpresence -x 0004 > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+	    echo " ERROR: Cannot set Physical Presence Lock"
+	#    dumpOutput
+	else
+	    echo " INFO: Can set Physical Presence Lock"
+	fi
+
+	echo "Physical Presence Lock should clear Physical Presence Action 2.f.ii"
+	physicalenable  > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+	    echo " INFO: Cannot set Physical Enable without Physical Presence"
+	else
+	    echo " ERROR: Can set Physical Enable without Physical Presence"
+	#    dumpOutput
+	fi
+
+	echo "Physical Presence Lock should fail with Physical Presence Lock Action 2.e"
+	physicalpresence -x 0004 > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+	    echo " INFO: Cannot set Physical Presence Lock"
+	else
+	    echo " ERROR: Can set Physical Presence Lock"
+	#    dumpOutput
+	fi
+
+	echo "Physical Presence Present should fail with Physical Presence Lock Action 2.e"
+	physicalpresence -x 0008 > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+	    echo " INFO: Cannot set Physical Presence Present"
+	else
+	    echo " ERROR: Can set Physical Presence Present"
+	#    dumpOutput
+	fi
+
+	echo "Physical Presence not Present should fail with Physical Presence Lock Action 2.e"
+	physicalpresence -x 0010 > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+	    echo " INFO: Cannot set Physical Presence not Present"
+	else
+	    echo " ERROR: Can set Physical Presence not Present"
+	#    dumpOutput
+	fi
+
+	echo ""
+	echo "Test Physical Presence HW Enable and Disable"
+	echo ""
+	
+	echo "Physical Presence HW Enable and Disable should fail Action 2.c"
+	physicalpresence -x 0240 > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+	    echo " INFO: Cannot set Physical Presence HW Enable"
+	else
+	    echo " ERROR: Can set Physical Presence HW Enable"
+	#    dumpOutput
+	fi
+
+	echo "Physical Presence HW Disable Action 2.f"
+	physicalpresence -x 0200 > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+	    echo " ERROR: Cannot set Physical Presence HW Disable"
+	#    dumpOutput
+	else
+	    echo " INFO: Can set Physical Presence HW Disable"
+	fi
+
+	echo "Physical Presence HW Enable Action 2.e"
+	physicalpresence -x 0040 > run.out
+	RES=$?
+	if [ $RES -ne 0 ]; then
+	    echo " ERROR: Cannot set Physical Presence HW Enable"
+	#    dumpOutput
+	else
+	    echo " INFO: Can set Physical Presence HW Enable"
+	fi
+
+	libtpm-config > run.out
+	DEVICE=`cat run.out | grep "Device" | gawk '{print $2}'`
+	if [ "$DEVICE" == "socket" ]; then
+		echo ""
+		echo "Test Physical Presence Lifetime Lock - for SW TPM Only"
+		echo ""
+	
+		echo "Physical Presence Cmd Enable"
+		physicalpresence -x 0020 > run.out
+		RES=$?
+		if [ $RES -ne 0 ]; then
+		    echo " ERROR: Cannot set Physical Presence Cmd Enable"
+		#    dumpOutput
+		else
+		    echo " INFO: Can set Physical Presence Cmd Enable"
+	
+		    echo "Physical Presence HW Enable"
+		    physicalpresence -x 0040 > run.out
+		    RES=$?
+		    if [ $RES -ne 0 ]; then
+			echo " ERROR: Cannot set Physical Presence HW Enable"
+		#    dumpOutput
+		    else
+			echo " INFO: Can set Physical Presence HW Enable"
+	
+		# Physical Presence Lifetime Lock runs only if the enables set
+		# successfully.  This is a lst line of defence against running with a
+		# HW TPM.  It's locked, but at least it's useable
+	
+			echo "Physical Presence Lifetime Lock Action 2.i"
+			physicalpresence -x 0080 > run.out
+			RES=$?
+			if [ $RES -ne 0 ]; then
+			    echo " ERROR: Cannot set Physical Presence Lifetime Lock"
+		#    dumpOutput
+			else
+			    echo " INFO: Can set Physical Presence Lifetime Lock"
+			fi
+		
+			echo "Physical Presence Lifetime Lock should fail with lifetime Lock Action 2.a"
+			physicalpresence -x 0080 > run.out
+			RES=$?
+			if [ $RES -ne 0 ]; then
+			    echo " INFO: Cannot set Physical Presence Lifetime Lock"
+			else
+			    echo " ERROR: Can set Physical Presence Lifetime Lock"
+		#    dumpOutput
+			fi
+		
+			echo "Physical Presence Cmd Enable should fail with lifetime Lock Action 2.a"
+			physicalpresence -x 0020 > run.out
+			RES=$?
+			if [ $RES -ne 0 ]; then
+			    echo " INFO: Cannot set Physical Presence Cmd Enable"
+			else
+			    echo " ERROR: Can set Physical Presence Cmd Enable"
+		#    dumpOutput
+			fi
+		
+			echo "Physical Presence Cmd Disable should fail with lifetime Lock Action 2.a"
+			physicalpresence -x > run.out
+			RES=$?
+			if [ $RES -ne 0 ]; then
+			    echo " INFO: Cannot set Physical Presence Cmd Disable"
+			else
+			    echo " ERROR: Can set Physical Presence Cmd Disable"
+		#    dumpOutput
+			fi
+		
+			echo "Physical Presence HW Disable should fail with lifetime Lock Action 2.a"
+			physicalpresence -x > run.out
+			RES=$?
+			if [ $RES -ne 0 ]; then
+			    echo " INFO: Cannot set Physical Presence HW Disable"
+			else
+			    echo " ERROR: Can set Physical Presence HW Disable"
+		#    dumpOutput
+			fi
+		
+			echo "Physical Presence HW Enable should fail with lifetime Lock Action 2.a"
+			physicalpresence -x > run.out
+			RES=$?
+			if [ $RES -ne 0 ]; then
+			    echo " INFO: Cannot set Physical Presence HW Enable"
+			else
+			    echo " ERROR: Can set Physical Presence HW Enable"
+		#    dumpOutput
+			fi
+		    fi
+		fi
+	elif [ "$DEVICE" == "/dev/tpm0" ]; then 
+		echo "Not running additional tests since /dev/tpm0 is used."
+	else
+		echo "Not running additional tests since device $DEVICE is used."
+	fi
+}
+	

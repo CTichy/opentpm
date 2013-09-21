@@ -1,0 +1,407 @@
+#################################################################################
+#										#
+# Author: Stefan Berger, stefanb@us.ibm.com					#
+# $Id: test_ownership 4073 2010-04-30 14:44:14Z kgoldman $			#
+# (c) Copyright IBM Corporation 2006, 2010.					#
+# 										#
+# All rights reserved.								#
+# 										#
+# Redistribution and use in source and binary forms, with or without		#
+# modification, are permitted provided that the following conditions are	#
+# met:										#
+# 										#
+# Redistributions of source code must retain the above copyright notice,	#
+# this list of conditions and the following disclaimer.				#
+# 										#
+# Redistributions in binary form must reproduce the above copyright		#
+# notice, this list of conditions and the following disclaimer in the		#
+# documentation and/or other materials provided with the distribution.		#
+# 										#
+# Neither the names of the IBM Corporation nor the names of its			#
+# contributors may be used to endorse or promote products derived from		#
+# this software without specific prior written permission.			#
+# 										#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS		#
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT		#
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR		#
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT		#
+# HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,	#
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT		#
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,		#
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY		#
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT		#
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE		#
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.		#
+#										#
+#################################################################################
+
+
+doTestOwnership ()
+{
+	echo "Performing clear operation under physical access using forceclear."
+	forceclear > run.out
+	ERR=$?
+	if [ $ERR -ne 0 ]; then
+		echo " ERROR: Could not properly run forceclear."
+		dumpOutput
+		echo "   **** You will have to re-cycle the TPM ****"
+	else
+		echo " INFO: Successfully ran forceclear."
+		tpmbios -n > run.out
+		ERR=$?
+		if [ $ERR -ne 0 ]; then
+			echo " ERROR: Could not set presence."
+			dumpOutput
+		else
+			echo " INFO: Successfully set presence."
+			takeTPM $OWNER_PASSWORD $SRK_PASSWORD $KEYSIZE_ST
+			ERR=$?
+			if [ $ERR -ne 0 ]; then
+				echo " ERROR: Could not take ownership of TPM."
+				dumpOutput
+				echo "   **** You will have to re-cycle the TPM ****"
+			fi
+		fi
+	fi
+
+
+	echo "Disabling the owner clear command."
+	disableownerclear -pwdo $OWNER_PASSWORD > run.out
+	ERR=$?
+	if [ $ERR -ne 0 ]; then
+		echo " ERROR: Could not properly run this command."
+		dumpOutput
+	else
+		echo " INFO: Successfully disabled the owner clear command."
+		echo "Trying to run owner clear"
+		clearown -pwdo $OWNER_PASSWORD > run.out
+		ERR=$?
+		if [ $ERR -ne 0 ]; then
+			echo " INFO: Successfully completed command."
+		else
+			echo " ERROR: Unexpected error code ($ERR)."
+			dumpOutput
+		fi
+		
+		if [ "$USE_TPMINIT" == "0" ]; then
+			echo ""
+			echo "Please stop the TPM and restart it. Press enter to continue."
+			read enter
+			echo ""
+		else
+			tpminit > run.out
+		fi
+		tpmbios > run.out
+		ERR=$?
+		if [ $ERR -ne 0 ]; then
+			echo " ERROR: Could not initialize communication with the TPM."
+			echo "    *** Please re-cycle the TPM!! ***"
+			dumpOutput
+		fi
+
+		echo "Trying to clear ownership."
+		clearown -pwdo $OWNER_PASSWORD > run.out
+		ERR=$?
+		if [ $ERR -ne 0 ]; then
+			echo " INFO: Successfully completed command."
+		else
+			echo " ERROR: Unexpected error code ($ERR)."
+			dumpOutput
+		fi
+
+		echo "Running 'force clear' under physical access."
+		forceclear > run.out
+		ERR=$?
+		if [ $ERR -ne 0 ]; then
+			echo " ERROR: Could not properly run 'force clear'."
+			dumpOutput
+		else
+			echo " INFO: Successfully ran 'force clear'."
+		fi
+
+#		echo "Trying to clear ownership."
+#		clearown -pwdo $OWNER_PASSWORD > run.out
+#		ERR=$?
+#		if [ $ERR -ne 0 ]; then
+#			echo " ERROR: Could not clear ownership."
+#			dumpOutput
+#		else
+#			echo " INFO: Successfully cleared ownership."
+#		fi
+
+		if [ "$USE_TPMINIT" == "0" ]; then
+			echo ""
+			echo "Please stop the TPM and restart it. Press enter to continue."
+			read enter
+			echo ""
+		else
+			./tpminit > run.out
+		fi
+		tpmbios > run.out
+		ERR=$?
+		if [ $ERR -ne 0 ]; then
+			echo " ERROR: Could not initialize communication with the TPM."
+			dumpOutput
+			echo "    *** Please re-cycle the TPM!! ***"
+			return 1
+		fi
+
+		if [ "$USE_TPMINIT" == "0" ]; then
+			echo ""
+			echo "Please stop the TPM and restart it. Press enter to continue."
+			read enter
+			echo ""
+		else
+			./tpminit > run.out
+		fi
+		tpmbios > run.out
+		ERR=$?
+		if [ $ERR -ne 0 ]; then
+			echo " ERROR: Could not initialize communication with the TPM."
+			dumpOutput
+			echo "    *** Please re-cycle the TPM!! ***"
+			return 1
+		else
+			echo "Preparing TPM for owner installation"
+			setownerinstall > run.out
+			ERR=$?
+			if [ $ERR -ne 0 ]; then
+				echo " ERROR: Could not prepare the TPM for owner installation"
+				dumpOutput
+				echo "    *** Please re-cycle the TPM!! ***"
+				return 1
+			else
+				echo " INFO: Prepared TPM for owner installation."
+				echo "Taking ownership of TPM."
+				takeown -pwdo $OWNER_PASSWORD -pwds $SRK_PASSWORD > run.out
+				ERR=$?
+				if [ $ERR -ne 0 ]; then
+					echo " ERROR: Could not take ownership!"
+					dumpOutput
+					echo "    *** Please re-cycle the TPM!! ***"
+					return 1
+				else
+					echo " INFO: Successfully took ownership."
+				fi
+			fi
+		fi
+
+		echo "Deactivating the TPM."
+		settempdeactivated > run.out
+		ERR=$?
+		if [ $ERR -ne 0 ]; then
+			echo " ERROR: Could not deactivate the TPM."
+			dumpOutput
+		else
+			echo " INFO: Successfully deactivated the TPM."
+			echo "Trying to hash file '$0'"
+			sha -if $0 > run.out
+			ERR=$?
+			if [ $ERR -eq 0 ]; then
+				echo " INFO: Could hash file"
+			else
+				echo " ERROR: Could not hash file"
+			fi
+
+			echo "Trying to get random numbers"
+			random > run.out
+			ERR=$?
+			if [ $ERR -ne 0 ]; then
+				echo " INFO: Command completed successfully."
+			else
+				echo " ERROR: Could get random numbers from deactivated TPM."
+			fi
+
+			if [ "$USE_TPMINIT" == "0" ]; then
+				echo ""
+				echo "Please stop the TPM and restart it. Press enter to continue."
+				read enter
+				echo ""
+			else
+				./tpminit > run.out
+			fi
+			tpmbios > run.out
+			ERR=$?
+			if [ $ERR -ne 0 ]; then
+				echo " ERROR: Could not initialize communication with the TPM."
+				dumpOutput
+				echo "    *** Please re-cycle the TPM!! ***"
+				return 1
+			fi
+		fi
+	fi
+
+	echo ""
+	echo "Trying to set the operator password under physical presence"
+	setoperatorauth -pwdo $TPM_OPERATOR_AUTH > run.out
+	ERR=$?
+	if [ $ERR -ne 0 ]; then
+		echo " ERROR: Could not set the operator password."
+		dumpOutput
+	else
+		echo " INFO: Successfully changed operator password."
+		echo "Changing operator password back to old password."
+		setoperatorauth -pwdo $TPM_OPERATOR_AUTH > run.out
+		ERR=$?
+		if [ $ERR -ne 0 ]; then
+			echo " ERROR: Could not change the operator password"
+			dumpOutput
+		else
+			echo " INFO: Successfully change operator password"
+		fi
+
+		echo "Setting physical presence of the device to 'no presence' (0x10)."
+		physicalpresence -x 0010 > run.out
+		ERR=$?
+		if [ $ERR -ne 0 ]; then
+			echo " ERROR: Could not change physical presence property."
+			dumpOutput
+			echo "        Leaving this test."
+			return 1
+		else
+			echo " INFO: Successfully changed physical presence property."
+			echo "Trying to set the operator password under physical presence"
+			setoperatorauth -pwdo $TPM_OPERATOR_AUTH > run.out
+			ERR=$?
+			if [ $ERR -ne 0 ]; then
+				echo " INFO: Command completed successfully."
+			else
+				echo " ERROR: Could change the password."
+				dumpOutput
+
+	
+				if [ "$USE_TPMINIT" == "0" ]; then
+					echo ""
+					echo "Please stop the TPM and restart it. Press enter to continue."
+					read enter
+					echo ""
+				else
+					./tpminit > run.out
+				fi
+
+				tpmbios > run.out
+				ERR=$?
+				if [ $ERR -ne 0 ]; then
+					echo " ERROR: Could not initialize communication with the TPM."
+					dumpOutput
+					echo "    *** Please re-cycle the TPM!! ***"
+					return 1
+				fi
+			fi
+		fi
+	fi
+
+	echo "Checking capabilities whether TPM is disabled."
+	checkTPMDisabled
+	RES=$?
+	if [ $RES -eq 0 ]; then
+		echo " INFO: TPM is enabled."
+	else
+		echo " WARN: TPM is already disabled."
+	fi
+
+	echo "Setting the state of permanent flags to 'TPM disabled'"
+	ownersetdisable -pwdo $OWNER_PASSWORD > run.out
+	ERR=$?
+	if [ $ERR -eq 0 ]; then
+		echo " INFO: Successfully disabled TPM."
+	else
+		echo " ERROR: Could not disable TPM."
+		dumpOutput
+	fi
+
+
+	echo "Checking capabilities whether TPM is disabled now."
+	checkTPMDisabled
+	RES=$?
+	if [ $RES -eq 0 ]; then
+		echo " ERROR: TPM is still enabled."
+		dumpOutput
+	else
+		echo " INFO: TPM is disabled."
+	fi
+
+	echo "Setting the state of permanent flags to 'TPM enabled'"
+	ownersetdisable -pwdo $OWNER_PASSWORD -en > run.out
+	ERR=$?
+	if [ $ERR -eq 0 ]; then
+		echo " INFO: Successfully enabled TPM."
+	else
+		echo " ERROR: Could not enable TPM."
+		dumpOutput
+	fi
+
+
+	echo "Checking capabilities whether TPM is enabled now."
+	checkTPMDisabled
+	RES=$?
+	if [ $RES -eq 0 ]; then
+		echo " INFO: TPM is enabled."
+	else
+		echo " ERROR: TPM is still disabled."
+		dumpOutput
+	fi
+
+	
+}
+
+### Test for a revokable endorsement key
+doTestRevEK() 
+{
+	REVEKPWD=revekpwd
+	echo ""
+	echo ""
+	echo "Please stop the TPM and remove all its state files (00.perm*)."
+	echo "Press enter to continue"
+	read enter
+	tpmbios > run.out
+	if [ "$USE_TPMINIT" == "0" ]; then
+		echo ""
+		echo "Please stop the TPM and restart it. Press enter to continue."
+		read enter
+		echo ""
+	else
+		tpminit > run.out
+	fi
+	tpmbios > run.out
+
+	echo "Creating revokable EK."
+	createrevek -pwdk $REVEKPWD > run.out
+	ERR=$?
+	if [ $ERR -eq 0 ]; then
+		echo " INFO: Successfully created a revokable EK."
+	else
+		echo " ERROR: Could not create revokable EK."
+		return 1
+	fi
+
+	echo "Revoking trust"
+	revtrust -pwdk $REVEKPWD > run.out
+	ERR=$?
+	if [ $ERR -eq 0 ]; then
+		echo " INFO: Successfully cleared revocable EK."
+	else
+		echo " ERROR: Could not revoke EK."
+		return 1
+	fi
+
+	echo "Creating a non-revokable EK without resetting the TPM."
+	createek > run.out
+	ERR=$?
+	if [ $ERR -ne 0 ]; then
+		echo " INFO: Command completed successfully."
+	else
+		echo " ERROR: Could create EK."
+	fi
+
+	recycleTPM 
+
+	echo "Creating a non-revokable EK after resetting the TPM."
+	createek > run.out
+	ERR=$?
+	if [ $ERR -eq 0 ]; then
+		echo " INFO: Successfully created EK."
+	else
+		echo " ERROR: Could not create EK."
+	fi
+}
