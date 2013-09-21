@@ -1,0 +1,390 @@
+tpmutil_tty.lo: tpmutil_tty.c /usr/include/stdio.h /usr/include/_ansi.h \
+ /usr/include/newlib.h /usr/include/sys/config.h \
+ /usr/include/machine/ieeefp.h /usr/include/sys/features.h \
+ /usr/include/cygwin/config.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/include/stddef.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/include/stdarg.h \
+ /usr/include/sys/reent.h /usr/include/_ansi.h /usr/include/sys/_types.h \
+ /usr/include/machine/_types.h /usr/include/machine/_default_types.h \
+ /usr/include/sys/lock.h /usr/include/sys/types.h \
+ /usr/include/machine/types.h /usr/include/cygwin/types.h \
+ /usr/include/sys/sysmacros.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/include/stdint.h /usr/include/stdint.h \
+ /usr/include/endian.h /usr/include/bits/endian.h /usr/include/byteswap.h \
+ /usr/include/sys/stdio.h /usr/include/sys/cdefs.h /usr/include/stdlib.h \
+ /usr/include/machine/stdlib.h /usr/include/alloca.h \
+ /usr/include/cygwin/stdlib.h /usr/include/cygwin/wait.h \
+ /usr/include/string.h /usr/include/sys/string.h /usr/include/errno.h \
+ /usr/include/sys/errno.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/windows.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/windef.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/winnt.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/winerror.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/basetsd.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/pshpack4.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/poppack.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/wincon.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/winbase.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/wingdi.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/winuser.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/winnls.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/winver.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/winnetwk.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/winreg.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/winsvc.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/cderr.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/dde.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/ddeml.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/dlgs.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/imm.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/lzexpand.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/mmsystem.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/nb30.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/rpc.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/rpcdce.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/basetyps.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/rpcdcep.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/rpcnsi.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/rpcnterr.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/shellapi.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/pshpack2.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/winperf.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/commdlg.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/winspool.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/ole2.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/objbase.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/rpcndr.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/rpcnsip.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/objfwd.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/wtypes.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/unknwn.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/objidl.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/cguid.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/olectlid.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/oleauto.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/oaidl.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/oleidl.h \
+ /usr/include/unistd.h /usr/include/sys/unistd.h /usr/include/getopt.h \
+ /usr/include/netinet/in.h /usr/include/cygwin/in.h \
+ /usr/include/cygwin/socket.h /usr/include/asm/socket.h \
+ /usr/include/cygwin/if.h /usr/include/sys/socket.h \
+ /usr/include/features.h /usr/include/sys/time.h \
+ /usr/include/cygwin/sys_time.h /usr/include/sys/select.h \
+ /usr/include/time.h /usr/include/machine/time.h \
+ /usr/include/cygwin/time.h /usr/include/signal.h \
+ /usr/include/sys/signal.h /usr/include/cygwin/signal.h \
+ /usr/include/cygwin/sockios.h /usr/include/sys/uio.h \
+ /usr/include/asm/byteorder.h /usr/include/cygwin/in6.h \
+ /usr/include/arpa/inet.h /usr/include/sys/un.h /usr/include/netdb.h \
+ /usr/include/inttypes.h /usr/include/sys/stat.h \
+ /usr/include/cygwin/stat.h /usr/include/fcntl.h /usr/include/sys/fcntl.h \
+ /usr/include/sys/_default_fcntl.h /usr/include/openssl/rand.h \
+ /usr/include/openssl/ossl_typ.h /usr/include/openssl/e_os2.h \
+ /usr/include/openssl/opensslconf.h /usr/include/openssl/sha.h tpm.h \
+ tpmfunc.h tpmkeys.h tpm.h tpm_structures.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/include-fixed/limits.h \
+ /usr/lib/gcc/i686-pc-cygwin/4.5.3/include-fixed/syslimits.h \
+ /usr/include/limits.h tpm_constants.h tpm_types.h \
+ /usr/include/openssl/rsa.h /usr/include/openssl/asn1.h \
+ /usr/include/openssl/bio.h /usr/include/openssl/crypto.h \
+ /usr/include/openssl/stack.h /usr/include/openssl/safestack.h \
+ /usr/include/openssl/opensslv.h /usr/include/openssl/symhacks.h \
+ /usr/include/openssl/bn.h tpmutil.h /usr/include/openssl/aes.h \
+ tpm_structures.h oiaposap.h tpm.h tpm_types.h tpm_constants.h tpmutil.h \
+ tpm_lowlevel.h
+
+/usr/include/stdio.h:
+
+/usr/include/_ansi.h:
+
+/usr/include/newlib.h:
+
+/usr/include/sys/config.h:
+
+/usr/include/machine/ieeefp.h:
+
+/usr/include/sys/features.h:
+
+/usr/include/cygwin/config.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/include/stddef.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/include/stdarg.h:
+
+/usr/include/sys/reent.h:
+
+/usr/include/_ansi.h:
+
+/usr/include/sys/_types.h:
+
+/usr/include/machine/_types.h:
+
+/usr/include/machine/_default_types.h:
+
+/usr/include/sys/lock.h:
+
+/usr/include/sys/types.h:
+
+/usr/include/machine/types.h:
+
+/usr/include/cygwin/types.h:
+
+/usr/include/sys/sysmacros.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/include/stdint.h:
+
+/usr/include/stdint.h:
+
+/usr/include/endian.h:
+
+/usr/include/bits/endian.h:
+
+/usr/include/byteswap.h:
+
+/usr/include/sys/stdio.h:
+
+/usr/include/sys/cdefs.h:
+
+/usr/include/stdlib.h:
+
+/usr/include/machine/stdlib.h:
+
+/usr/include/alloca.h:
+
+/usr/include/cygwin/stdlib.h:
+
+/usr/include/cygwin/wait.h:
+
+/usr/include/string.h:
+
+/usr/include/sys/string.h:
+
+/usr/include/errno.h:
+
+/usr/include/sys/errno.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/windows.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/windef.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/winnt.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/winerror.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/basetsd.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/pshpack4.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/poppack.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/wincon.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/winbase.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/wingdi.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/winuser.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/winnls.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/winver.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/winnetwk.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/winreg.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/winsvc.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/cderr.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/dde.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/ddeml.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/dlgs.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/imm.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/lzexpand.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/mmsystem.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/nb30.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/rpc.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/rpcdce.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/basetyps.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/rpcdcep.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/rpcnsi.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/rpcnterr.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/shellapi.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/pshpack2.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/winperf.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/commdlg.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/winspool.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/ole2.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/objbase.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/rpcndr.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/rpcnsip.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/objfwd.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/wtypes.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/unknwn.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/objidl.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/cguid.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/olectlid.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/oleauto.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/oaidl.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/../../../../include/w32api/oleidl.h:
+
+/usr/include/unistd.h:
+
+/usr/include/sys/unistd.h:
+
+/usr/include/getopt.h:
+
+/usr/include/netinet/in.h:
+
+/usr/include/cygwin/in.h:
+
+/usr/include/cygwin/socket.h:
+
+/usr/include/asm/socket.h:
+
+/usr/include/cygwin/if.h:
+
+/usr/include/sys/socket.h:
+
+/usr/include/features.h:
+
+/usr/include/sys/time.h:
+
+/usr/include/cygwin/sys_time.h:
+
+/usr/include/sys/select.h:
+
+/usr/include/time.h:
+
+/usr/include/machine/time.h:
+
+/usr/include/cygwin/time.h:
+
+/usr/include/signal.h:
+
+/usr/include/sys/signal.h:
+
+/usr/include/cygwin/signal.h:
+
+/usr/include/cygwin/sockios.h:
+
+/usr/include/sys/uio.h:
+
+/usr/include/asm/byteorder.h:
+
+/usr/include/cygwin/in6.h:
+
+/usr/include/arpa/inet.h:
+
+/usr/include/sys/un.h:
+
+/usr/include/netdb.h:
+
+/usr/include/inttypes.h:
+
+/usr/include/sys/stat.h:
+
+/usr/include/cygwin/stat.h:
+
+/usr/include/fcntl.h:
+
+/usr/include/sys/fcntl.h:
+
+/usr/include/sys/_default_fcntl.h:
+
+/usr/include/openssl/rand.h:
+
+/usr/include/openssl/ossl_typ.h:
+
+/usr/include/openssl/e_os2.h:
+
+/usr/include/openssl/opensslconf.h:
+
+/usr/include/openssl/sha.h:
+
+tpm.h:
+
+tpmfunc.h:
+
+tpmkeys.h:
+
+tpm.h:
+
+tpm_structures.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/include-fixed/limits.h:
+
+/usr/lib/gcc/i686-pc-cygwin/4.5.3/include-fixed/syslimits.h:
+
+/usr/include/limits.h:
+
+tpm_constants.h:
+
+tpm_types.h:
+
+/usr/include/openssl/rsa.h:
+
+/usr/include/openssl/asn1.h:
+
+/usr/include/openssl/bio.h:
+
+/usr/include/openssl/crypto.h:
+
+/usr/include/openssl/stack.h:
+
+/usr/include/openssl/safestack.h:
+
+/usr/include/openssl/opensslv.h:
+
+/usr/include/openssl/symhacks.h:
+
+/usr/include/openssl/bn.h:
+
+tpmutil.h:
+
+/usr/include/openssl/aes.h:
+
+tpm_structures.h:
+
+oiaposap.h:
+
+tpm.h:
+
+tpm_types.h:
+
+tpm_constants.h:
+
+tpmutil.h:
+
+tpm_lowlevel.h:
